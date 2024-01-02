@@ -15,24 +15,17 @@ You can install the package via composer:
 composer require castelnuovo/laravel-env
 ```
 
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag="laravel-env-config"
-```
-
-This is the contents of the published config file:
-
-```php
-return [
-];
-```
-
 ## Usage
 
-```php
-$LaravelEnv = new Castelnuovo\LaravelEnv();
-echo $LaravelEnv->echoPhrase('Hello, castelnuovo!');
+```sh
+# Create production environment file
+cp .env .env.production
+
+# Generate a key and encrypt an environment file
+php artisan env:encrypt --env production
+
+# Decrypt and edit an environment file
+php artisan env:edit production
 ```
 
 ## Testing

@@ -17,7 +17,6 @@ class LaravelEnvServiceProvider extends PackageServiceProvider
          */
         $package
             ->name('laravel-env')
-            ->hasConfigFile()
             ->hasCommand(LaravelEnvCommand::class);
     }
 }
