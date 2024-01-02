@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Castelnuovo\LaravelEnv\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class LaravelEnvCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'laravel-env';
 
     public $description = 'My command';
 
