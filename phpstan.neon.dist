@@ -2,10 +2,14 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
-    level: 5
+    level: 9
     paths:
         - src
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
     checkMissingIterableValueType: false
+    ignoreErrors:
+        - '#^Parameter \$options of function Laravel\\Prompts\\select expects array\<int\|string, string\>\|Illuminate\\Support\\Collection\<int\|string, string\>, array given\.$#'
+        - '#^Method Castelnuovo\\LaravelEnv\\Commands\\LaravelEnvCommand\:\:envs\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+        - '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(mixed\)\: \(0\|1\|false\) given\.$#'

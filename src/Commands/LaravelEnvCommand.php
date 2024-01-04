@@ -4,20 +4,23 @@ namespace Castelnuovo\LaravelEnv\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\error;
 use function Laravel\Prompts\info;
-use function Laravel\Prompts\note;
 use function Laravel\Prompts\password;
+use function Laravel\Prompts\select;
 use function Laravel\Prompts\warning;
 
 class LaravelEnvCommand extends Command implements PromptsForMissingInput
 {
     protected $signature = 'env:edit
         {env : The environment to edit .env file for}
+        {key : The decryption key for the .env file}
         {--c|code : Open the decrypted .env file in VS Code}';
 
     protected $description = 'Decrypt, Edit and Encrypt .env files';
@@ -25,70 +28,106 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
     protected function promptForMissingArgumentsUsing()
     {
         return [
-            'env' => [
-                'Which environment do you want to edit the .env file for?',
-                'E.g. production',
-            ],
+            'env' => fn () => select(
+                label: 'Which encrypted env do you want to edit?',
+                options: $this->envs()->toArray(),
+                required: true,
+            ),
+            'key' => fn () => password(
+                label: 'What is the decryption key for the encrypted env?',
+                required: true,
+            ),
         ];
     }
 
     public function handle(): int
     {
-        $disk = Storage::build(['driver' => 'local', 'root' => base_path()]);
-        $env = $this->argument('env');
+        $encEnvFile = ".env.{$this->argument('env')}.encrypted";
 
-        $encryptedEnv = ".env.{$env}.encrypted";
-        $decryptedEnv = ".env.{$env}";
-
-        $key = password("What is the decryption key for {$encryptedEnv}?", required: true);
-
-        if (! $this->decryptEnv($env, $key)) {
-            error("{$encryptedEnv} could not be decrypted");
+        if (! $this->envs()->contains($this->argument('env'))) {
+            error("{$encEnvFile} does not exist!");
 
             return self::FAILURE;
         }
 
-        info("Please open, edit and save {$decryptedEnv}.");
-        note($disk->path($decryptedEnv));
+        if (! $this->decrypt()) {
+            error("{$encEnvFile} could not be decrypted!");
 
-        if ($this->option('code')) {
-            Process::quietly()->run("code {$disk->path($decryptedEnv)}");
+            return self::FAILURE;
         }
 
-        if (confirm("Store changes made to {$decryptedEnv}?")) {
-            if (! $this->encryptEnv($env, $key)) {
-                error("{$decryptedEnv} could not be encrypted");
+        $envFile = ".env.{$this->argument('env')}";
+        $envFilePath = base_path($envFile);
+
+        info("Please open, edit and save: {$envFilePath}");
+
+        if ($this->option('code')) {
+            Process::quietly()->run("code {$envFilePath}");
+        }
+
+        if (confirm("Store changes made to {$envFile}?")) {
+            if (! $this->encrypt()) {
+                error("{$envFile} could not be encrypted!");
 
                 return self::FAILURE;
             }
 
-            info('Changes were saved and encrypted!');
+            info('The changes were saved and encrypted!');
         } else {
-            warning('Changes were discarded!');
+            warning('The changes were discarded!');
         }
 
-        $disk->delete($decryptedEnv);
+        $this->disk()->delete($envFile);
 
         return self::SUCCESS;
     }
 
-    protected function decryptEnv(string $env, string $key): bool
+    /**
+     * Get the disk for the encrypted .env files.
+     */
+    protected function disk(): Filesystem
     {
-        return $this->call('env:decrypt', [
-            '--key' => $key,
-            '--env' => $env,
-            '--force' => true,
-            '--quiet' => true,
-        ]) === self::SUCCESS;
+        return Storage::build(['driver' => 'local', 'root' => base_path()]);
     }
 
-    protected function encryptEnv(string $env, string $key): bool
+    /**
+     * Get environments of the encrypted .env files.
+     */
+    protected function envs(): Collection
     {
-        return $this->call('env:encrypt', [
-            '--key' => $key,
-            '--env' => $env,
+        return collect($this->disk()->files())
+            ->filter(fn ($file) => preg_match('/\.env\..*\.encrypted/', $file))
+            ->map(fn ($file) => preg_replace('/\.env\.(.*)\.encrypted/', '$1', $file))
+            ->flatten();
+    }
+
+    /**
+     * Decrypt the .env file for the given environment.
+     */
+    protected function decrypt(): bool
+    {
+        $result = $this->call('env:decrypt', [
+            '--env' => $this->argument('env'),
+            '--key' => $this->argument('key'),
             '--force' => true,
             '--quiet' => true,
-        ]) === self::SUCCESS;
+        ]);
+
+        return $result === Command::SUCCESS;
+    }
+
+    /**
+     * Encrypt the .env file for the given environment.
+     */
+    protected function encrypt(): bool
+    {
+        $result = $this->call('env:encrypt', [
+            '--env' => $this->argument('env'),
+            '--key' => $this->argument('key'),
+            '--force' => true,
+            '--quiet' => true,
+        ]);
+
+        return $result === Command::SUCCESS;
     }
 }
