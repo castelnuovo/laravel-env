@@ -14,7 +14,6 @@ use function Laravel\Prompts\error;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
-use function Laravel\Prompts\warning;
 
 class LaravelEnvCommand extends Command implements PromptsForMissingInput
 {
@@ -51,15 +50,13 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
         }
 
         if (! $this->decrypt()) {
-            error("{$encEnvFile} could not be decrypted!");
-
             return self::FAILURE;
         }
 
         $envFile = ".env.{$this->argument('env')}";
         $envFilePath = base_path($envFile);
 
-        info("Please open, edit and save: {$envFilePath}");
+        info("Open, edit and save: {$envFilePath}");
 
         if ($this->option('code')) {
             Process::quietly()->run("code {$envFilePath}");
@@ -67,14 +64,8 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
 
         if (confirm("Store changes made to {$envFile}?")) {
             if (! $this->encrypt()) {
-                error("{$envFile} could not be encrypted!");
-
                 return self::FAILURE;
             }
-
-            info('The changes were saved and encrypted!');
-        } else {
-            warning('The changes were discarded!');
         }
 
         $this->disk()->delete($envFile);
