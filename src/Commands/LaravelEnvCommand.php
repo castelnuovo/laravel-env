@@ -24,7 +24,7 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
 
     protected $description = 'Decrypt, Edit and Encrypt .env files';
 
-    protected function promptForMissingArgumentsUsing()
+    protected function promptForMissingArgumentsUsing(): array
     {
         return [
             'env' => fn () => select(
@@ -67,8 +67,6 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
                 return self::FAILURE;
             }
         }
-
-        $this->disk()->delete($envFile);
 
         return self::SUCCESS;
     }
@@ -115,6 +113,7 @@ class LaravelEnvCommand extends Command implements PromptsForMissingInput
         $result = $this->call('env:encrypt', [
             '--env' => $this->argument('env'),
             '--key' => $this->argument('key'),
+            '--prune' => true,
             '--force' => true,
             '--quiet' => true,
         ]);
